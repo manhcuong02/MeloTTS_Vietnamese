@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
-from torch.cuda.amp import autocast, GradScaler
+from torch.amp import autocast, GradScaler
 from tqdm import tqdm
 import logging
 
@@ -26,7 +26,7 @@ from models import (
 )
 from losses import generator_loss, discriminator_loss, feature_loss, kl_loss
 from mel_processing import mel_spectrogram_torch, spec_to_mel_torch
-from text.symbols import symbols
+from melo.text.symbols import symbols
 from melo.download_utils import load_pretrain_model
 
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -166,12 +166,14 @@ def run():
     net_g = DDP(net_g, device_ids=[rank], find_unused_parameters=True)
     net_d = DDP(net_d, device_ids=[rank], find_unused_parameters=True)
     
-    pretrain_G, pretrain_D, pretrain_dur = load_pretrain_model()
-    hps.pretrain_G = hps.pretrain_G or pretrain_G
-    hps.pretrain_D = hps.pretrain_D or pretrain_D
-    hps.pretrain_dur = hps.pretrain_dur or pretrain_dur
+    if not hps.pretrain_G or not hps.pretrain_D or not hps.pretrain_dur:
+        pretrain_G, pretrain_D, pretrain_dur = load_pretrain_model()
+        hps.pretrain_G = pretrain_G
+        hps.pretrain_D = pretrain_D
+        hps.pretrain_dur = pretrain_dur
 
     if hps.pretrain_G:
+        print("Loading pretrain model for G: ",  hps.pretrain_G)
         utils.load_checkpoint(
                 hps.pretrain_G,
                 net_g,
@@ -179,6 +181,7 @@ def run():
                 skip_optimizer=True
             )
     if hps.pretrain_D:
+        print("Loading pretrain model for D: ",  hps.pretrain_D)
         utils.load_checkpoint(
                 hps.pretrain_D,
                 net_d,
@@ -190,6 +193,7 @@ def run():
     if net_dur_disc is not None:
         net_dur_disc = DDP(net_dur_disc, device_ids=[rank], find_unused_parameters=True)
         if hps.pretrain_dur:
+            print("Loading pretrain model for Duration Discriminator: ",  hps.pretrain_dur)
             utils.load_checkpoint(
                     hps.pretrain_dur,
                     net_dur_disc,
@@ -339,7 +343,7 @@ def train_and_evaluate(
         bert = bert.cuda(rank, non_blocking=True)
         ja_bert = ja_bert.cuda(rank, non_blocking=True)
 
-        with autocast(enabled=hps.train.fp16_run):
+        with autocast(device_type="cuda", enabled=hps.train.fp16_run):
             (
                 y_hat,
                 l_length,
@@ -388,7 +392,7 @@ def train_and_evaluate(
 
             # Discriminator
             y_d_hat_r, y_d_hat_g, _, _ = net_d(y, y_hat.detach())
-            with autocast(enabled=False):
+            with autocast(device_type="cuda", enabled=False):
                 loss_disc, losses_disc_r, losses_disc_g = discriminator_loss(
                     y_d_hat_r, y_d_hat_g
                 )
@@ -397,7 +401,7 @@ def train_and_evaluate(
                 y_dur_hat_r, y_dur_hat_g = net_dur_disc(
                     hidden_x.detach(), x_mask.detach(), logw.detach(), logw_.detach()
                 )
-                with autocast(enabled=False):
+                with autocast(device_type="cuda", enabled=False):
                     # TODO: I think need to mean using the mask, but for now, just mean all
                     (
                         loss_dur_disc,
@@ -417,12 +421,12 @@ def train_and_evaluate(
         grad_norm_d = commons.clip_grad_value_(net_d.parameters(), None)
         scaler.step(optim_d)
 
-        with autocast(enabled=hps.train.fp16_run):
+        with autocast(device_type="cuda", enabled=hps.train.fp16_run):
             # Generator
             y_d_hat_r, y_d_hat_g, fmap_r, fmap_g = net_d(y, y_hat)
             if net_dur_disc is not None:
                 y_dur_hat_r, y_dur_hat_g = net_dur_disc(hidden_x, x_mask, logw, logw_)
-            with autocast(enabled=False):
+            with autocast(device_type="cuda", enabled=False):
                 loss_dur = torch.sum(l_length.float())
                 loss_mel = F.l1_loss(y_mel, y_hat_mel) * hps.train.c_mel
                 loss_kl = kl_loss(z_p, logs_q, m_p, logs_p, z_mask) * hps.train.c_kl
@@ -554,7 +558,7 @@ def evaluate(hps, generator, eval_loader, writer_eval):
             language,
             bert,
             ja_bert,
-        ) in enumerate(eval_loader):
+        ) in enumerate(tqdm(eval_loader)):
             x, x_lengths = x.cuda(), x_lengths.cuda()
             spec, spec_lengths = spec.cuda(), spec_lengths.cuda()
             y, y_lengths = y.cuda(), y_lengths.cuda()
