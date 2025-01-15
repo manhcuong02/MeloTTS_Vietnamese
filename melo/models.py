@@ -325,9 +325,9 @@ class TextEncoder(nn.Module):
     ):
         super().__init__()
         if num_languages is None:
-            from text import num_languages
+            from melo.text.symbols import num_languages
         if num_tones is None:
-            from text import num_tones
+            from melo.text.symbols import num_tones
         self.n_vocab = n_vocab
         self.out_channels = out_channels
         self.hidden_channels = hidden_channels
