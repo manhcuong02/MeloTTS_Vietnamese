@@ -9,6 +9,7 @@ from scipy.io.wavfile import read
 import torch
 import torchaudio
 import librosa
+import shutil
 from melo.text import cleaned_text_to_sequence, get_bert
 from melo.text.cleaner import clean_text
 from melo import commons
@@ -21,7 +22,15 @@ logger = logging.getLogger(__name__)
 
 def get_text_for_tts_infer(text, language_str, hps, device, symbol_to_id=None):
     norm_text, phone, tone, word2ph = clean_text(text, language_str)
+    print('\n====clean_text=====')
+    print('norm_text', len(norm_text), norm_text)
+    print('phone', len(phone), phone)
+    print('tone', len(tone), tone)
+    print('word2ph', len(word2ph), sum(word2ph), word2ph)
     phone, tone, language = cleaned_text_to_sequence(phone, tone, language_str, symbol_to_id)
+    print('\n========cleaned_text_to_sequence=========')
+    print('phone', phone)
+    print('tone', tone)
 
     if hps.data.add_blank:
         phone = commons.intersperse(phone, 0)
@@ -31,6 +40,11 @@ def get_text_for_tts_infer(text, language_str, hps, device, symbol_to_id=None):
             word2ph[i] = word2ph[i] * 2
         word2ph[0] += 1
 
+    print(f'add_blank phone:{len(phone)} {phone}')
+    print(f'add_blank tone:{len(tone)} {tone}')
+    print(f'add_blank language:{len(language)} {language}')
+    print(f'add_blank word2ph: {word2ph}')
+    
     if getattr(hps.data, "disable_bert", False):
         bert = torch.zeros(1024, len(phone))
         ja_bert = torch.zeros(768, len(phone))
@@ -42,7 +56,7 @@ def get_text_for_tts_infer(text, language_str, hps, device, symbol_to_id=None):
         if language_str == "ZH":
             bert = bert
             ja_bert = torch.zeros(768, len(phone))
-        elif language_str in ["JP", "EN", "ZH_MIX_EN", 'KR', 'SP', 'ES', 'FR', 'DE', 'RU']:
+        elif language_str in ["JP", "EN", "ZH_MIX_EN", 'KR', 'SP', 'ES', 'FR', 'DE', 'RU', "VI"]:
             ja_bert = bert
             bert = torch.zeros(1024, len(phone))
         else:
@@ -59,7 +73,7 @@ def get_text_for_tts_infer(text, language_str, hps, device, symbol_to_id=None):
 
 def load_checkpoint(checkpoint_path, model, optimizer=None, skip_optimizer=False):
     assert os.path.isfile(checkpoint_path)
-    checkpoint_dict = torch.load(checkpoint_path, map_location="cpu")
+    checkpoint_dict = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
     iteration = checkpoint_dict.get("iteration", 0)
     learning_rate = checkpoint_dict.get("learning_rate", 0.)
     if (
@@ -390,6 +404,35 @@ def get_logger(model_dir, filename="train.log"):
     h.setFormatter(formatter)
     logger.addHandler(h)
     return logger
+
+
+def move_folder(src_path, dst_path):
+    """Move a folder from source to destination path.
+    
+    Args:
+        src_path (str): Source folder path
+        dst_path (str): Destination folder path
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        # Check if source exists
+        if not os.path.exists(src_path):
+            logger.error(f"Source folder does not exist: {src_path}")
+            return False
+            
+        # Create destination parent directory if it doesn't exist
+        os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+        
+        # Move the folder
+        shutil.move(src_path, dst_path)
+        logger.info(f"Successfully moved folder from {src_path} to {dst_path}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error moving folder: {str(e)}")
+        return False
 
 
 class HParams:
