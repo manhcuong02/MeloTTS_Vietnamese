@@ -61,7 +61,7 @@ def load_or_download_model(locale, device, use_hf=True, ckpt_path=None):
         else:
             assert language in DOWNLOAD_CKPT_URLS
             ckpt_path = cached_path(DOWNLOAD_CKPT_URLS[language])
-    return torch.load(ckpt_path, map_location=device)
+    return return torch.load(ckpt_path, map_location=device, weights_only=True)
 
 def load_pretrain_model():
     return [cached_path(url) for url in PRETRAINED_MODELS.values()]
