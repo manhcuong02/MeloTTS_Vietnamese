@@ -8,7 +8,7 @@ import click
 from text.cleaner import clean_text_bert
 import os
 import torch
-from text.symbols import symbols, num_languages, num_tones
+from melo.text.symbols import symbols, num_languages, num_tones
 
 @click.command()
 @click.option(
@@ -27,6 +27,7 @@ from text.symbols import symbols, num_languages, num_tones
 @click.option("--val-per-spk", default=4)
 @click.option("--max-val-total", default=8)
 @click.option("--clean/--no-clean", default=True)
+@click.option("--device", default="cpu")
 def main(
     metadata: str,
     cleaned_path: Optional[str],
@@ -36,6 +37,7 @@ def main(
     val_per_spk: int,
     max_val_total: int,
     clean: bool,
+    device: str,
 ):
     if train_path is None:
         train_path = os.path.join(os.path.dirname(metadata), 'train.list')
@@ -52,7 +54,7 @@ def main(
         for line in tqdm(open(metadata, encoding="utf-8").readlines()):
             try:
                 utt, spk, language, text = line.strip().split("|")
-                norm_text, phones, tones, word2ph, bert = clean_text_bert(text, language, device='cuda:0')
+                norm_text, phones, tones, word2ph, bert = clean_text_bert(text, language, device=device)
                 for ph in phones:
                     if ph not in symbols and ph not in new_symbols:
                         new_symbols.append(ph)
