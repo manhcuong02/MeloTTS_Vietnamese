@@ -319,6 +319,7 @@ language_id_map = {
     "SP": 5,
     "FR": 6,
     "VI": 7,
+    "VI_EN": 8, # Add it to be compatible with the TextEncoder's pretraining.
 }
 num_languages = len(language_id_map.keys())
 
@@ -332,7 +333,9 @@ language_tone_start_map = {
     "SP": num_zh_tones + num_ja_tones + num_en_tones + num_kr_tones,
     "FR": num_zh_tones + num_ja_tones + num_en_tones + num_kr_tones + num_es_tones,
     "VI": num_zh_tones + num_ja_tones + num_en_tones + num_kr_tones + num_es_tones + num_fr_tones,
+    "VI_EN": num_zh_tones + num_ja_tones + num_en_tones + num_kr_tones + num_es_tones + num_fr_tones, # Add it to be compatible with the TextEncoder's pretraining.
 }
+
 
 if __name__ == "__main__":
     print(num_languages, len(symbols), num_tones)
