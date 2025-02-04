@@ -43,7 +43,7 @@ class TextAudioSpeakerLoader(torch.utils.data.Dataset):
 
         self.add_blank = hparams.add_blank
         self.min_text_len = getattr(hparams, "min_text_len", 1)
-        self.max_text_len = getattr(hparams, "max_text_len", 300)
+        self.max_text_len = getattr(hparams, "max_text_len", 500)
 
         random.seed(1234)
         random.shuffle(self.audiopaths_sid_text)
@@ -161,7 +161,7 @@ class TextAudioSpeakerLoader(torch.utils.data.Dataset):
             bert = torch.load(bert_path, weights_only=True)
             assert bert.shape[-1] == len(phone)
         except Exception as e:
-            print(e, wav_path, bert_path, bert.shape, len(phone))
+            # print(e, wav_path, bert_path, bert.shape, len(phone))
             bert = get_bert(text, word2ph, language_str)
             torch.save(bert, bert_path)
             assert bert.shape[-1] == len(phone), phone

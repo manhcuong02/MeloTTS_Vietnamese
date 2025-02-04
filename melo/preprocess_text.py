@@ -112,10 +112,12 @@ def main(
         val_list = val_list[:max_val_total]
 
     with open(train_path, "w", encoding="utf-8") as f:
+        shuffle(train_list)
         for line in train_list:
             f.write(line)
 
     with open(val_path, "w", encoding="utf-8") as f:
+        shuffle(val_list)
         for line in val_list:
             f.write(line)
 

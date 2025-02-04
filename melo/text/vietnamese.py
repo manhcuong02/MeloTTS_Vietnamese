@@ -126,9 +126,9 @@ def text_normalize(text: str) -> str:
     text = handle_secondary_punctuation(text)
 
     word_segment = word_tokenize(text, format="text")
-    
+
     # ! Hiện tại mô hình phobert-base-v2 phân biệt chữ in hoa và chữ in thường
-    # word_segment = word_segment.lower() 
+    # word_segment = word_segment.lower()
     return word_segment
 
 
@@ -183,6 +183,7 @@ def g2p(text: str, pad_start_end=True, tokenized=False):
         tones = [0] + tones + [0]
         word2ph = [1] + word2ph + [1]
     return phones, tones, word2ph
+
 
 def get_bert_feature(text, word2ph, device=None):
     from . import vietnamese_bert
