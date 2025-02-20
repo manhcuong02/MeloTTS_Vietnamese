@@ -12,7 +12,7 @@ class Text2PhonemeSequence:
         self,
         pretrained_g2p_model="charsiu/g2p_multilingual_byT5_small_100",
         tokenizer="google/byt5-small",
-        language="vie-c",
+        language="vie-n",
         device="cuda:0",
     ):
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer)
@@ -235,36 +235,39 @@ class Text2PhonemeSequence:
             f.write("\n")
         f.close()
 
+    def t2p(self, text: str) -> str:
+        if text in self.phone_dict:
+            return self.phone_dict[text][0]
+        elif text in self.punctuation:
+            return text
+        else:
+            out = self.tokenizer(
+                "<" + self.language + ">: " + text,
+                padding=True,
+                add_special_tokens=False,
+                return_tensors="pt",
+            )
+            if "cuda" in self.device:
+                out["input_ids"] = out["input_ids"].to(self.device)
+                out["attention_mask"] = out["attention_mask"].to(self.device)
+            if self.language + ".tsv" not in self.phoneme_length.keys():
+                self.phoneme_length[self.language + ".tsv"] = 50
+            preds = self.model.generate(
+                **out,
+                num_beams=1,
+                max_length=self.phoneme_length[self.language + ".tsv"]
+            )
+            phones = self.tokenizer.batch_decode(
+                preds.tolist(), skip_special_tokens=True
+            )
+            return phones[0]
+
     def infer_sentence(self, sentence="", seperate_syllabel_token="_"):
         list_words = sentence.split(" ")
         list_phones = []
         for i in range(len(list_words)):
-            list_words[i] = list_words[i].replace(seperate_syllabel_token, " ")
-            if list_words[i] in self.phone_dict:
-                list_phones.append(self.phone_dict[list_words[i]][0])
-            elif list_words[i] in self.punctuation:
-                list_phones.append(list_words[i])
-            else:
-                out = self.tokenizer(
-                    "<" + self.language + ">: " + list_words[i],
-                    padding=True,
-                    add_special_tokens=False,
-                    return_tensors="pt",
-                )
-                if "cuda" in self.device:
-                    out["input_ids"] = out["input_ids"].to(self.device)
-                    out["attention_mask"] = out["attention_mask"].to(self.device)
-                if self.language + ".tsv" not in self.phoneme_length.keys():
-                    self.phoneme_length[self.language + ".tsv"] = 50
-                preds = self.model.generate(
-                    **out,
-                    num_beams=1,
-                    max_length=self.phoneme_length[self.language + ".tsv"]
-                )
-                phones = self.tokenizer.batch_decode(
-                    preds.tolist(), skip_special_tokens=True
-                )
-                list_phones.append(phones[0])
+            phoneme = self.t2p(list_words[i])
+            list_phones.append(phoneme)
 
             list_phones[-1] = self.postprocess_phonemes(list_words[i], list_phones[-1])
 
@@ -295,7 +298,7 @@ class Text2PhonemeSequence:
                 for t in text.split():
                     match = re.search(pattern, unidecode(t).lower())
                     if match:
-                        old_phoneme: str = self.phone_dict[t][0]    
+                        old_phoneme: str = self.t2p(t)
                         new_phoneme = old_phoneme
                         for key, value in replacements.items():
                             new_phoneme = new_phoneme.replace(key, value)
@@ -313,6 +316,6 @@ if __name__ == "__main__":
     )
     print(
         a.infer_sentence(
-            "vứt vào xoong cho xong đi"
+            "rất vui khi được gặp bạn"
         )
     )
