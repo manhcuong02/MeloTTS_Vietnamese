@@ -12,7 +12,7 @@ from .symbols import symbols, vi_symbols
 
 current_file_path = os.path.dirname(__file__)
 
-vi_config = os.path.join(current_file_path, "..", "configs/config-vi.json")
+vi_config = os.path.join(current_file_path, "..", "configs/config.json")
 
 with open(vi_config, "r", encoding="utf-8") as f:
     config = json.load(f)
