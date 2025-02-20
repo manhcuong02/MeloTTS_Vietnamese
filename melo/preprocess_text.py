@@ -8,7 +8,7 @@ import click
 from text.cleaner import clean_text_bert
 import os
 import torch
-from melo.text.symbols import symbols, num_languages, num_tones
+from melo.text.symbols import symbols, num_languages, num_tones, n_speakers
 
 @click.command()
 @click.option(
@@ -126,7 +126,7 @@ def main(
 
     config["data"]["training_files"] = train_path
     config["data"]["validation_files"] = val_path
-    config["data"]["n_speakers"] = len(spk_id_map)
+    config["data"]["n_speakers"] = n_speakers
     config["num_languages"] = num_languages
     config["num_tones"] = num_tones
     config["symbols"] = symbols

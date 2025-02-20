@@ -336,6 +336,7 @@ language_tone_start_map = {
     "VI_EN": num_zh_tones + num_ja_tones + num_en_tones + num_kr_tones + num_es_tones + num_fr_tones, # Add it to be compatible with the TextEncoder's pretraining.
 }
 
+n_speakers = 256
 
 if __name__ == "__main__":
     print(num_languages, len(symbols), num_tones)
