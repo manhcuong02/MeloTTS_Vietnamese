@@ -85,8 +85,9 @@ Listen to sample outputs from the model:
 ### Sample Audio
 <audio controls>
   <source src="samples/sample.wav" type="audio/wav">
-  Your browser does not support the audio element.
+  Your browser does not support the audio element. <a href="samples/sample.wav">Click here to download/listen to the audio</a>
 </audio>
+
 
 ## License
 This project follows the MIT License, like the original MeloTTS project, allowing use for both commercial and non-commercial purposes.
