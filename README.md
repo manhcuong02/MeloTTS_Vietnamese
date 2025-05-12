@@ -5,57 +5,91 @@
 </div>
 
 ## Introduction
-MeloTTS is a **high-quality multi-lingual** text-to-speech library by [MIT](https://www.mit.edu/) and [MyShell.ai](https://myshell.ai). Supported languages include:
+MeloTTS Vietnamese is a version of MeloTTS optimized for the Vietnamese language. This version inherits the high-quality characteristics of the original model but has been specially adjusted to work well with the Vietnamese language.
 
-| Language | Example |
-| --- | --- |
-| English (American)    | [Link](https://myshell-public-repo-host.s3.amazonaws.com/myshellttsbase/examples/en/EN-US/speed_1.0/sent_000.wav) |
-| English (British)     | [Link](https://myshell-public-repo-host.s3.amazonaws.com/myshellttsbase/examples/en/EN-BR/speed_1.0/sent_000.wav) |
-| English (Indian)      | [Link](https://myshell-public-repo-host.s3.amazonaws.com/myshellttsbase/examples/en/EN_INDIA/speed_1.0/sent_000.wav) |
-| English (Australian)  | [Link](https://myshell-public-repo-host.s3.amazonaws.com/myshellttsbase/examples/en/EN-AU/speed_1.0/sent_000.wav) |
-| English (Default)     | [Link](https://myshell-public-repo-host.s3.amazonaws.com/myshellttsbase/examples/en/EN-Default/speed_1.0/sent_000.wav) |
-| Spanish               | [Link](https://myshell-public-repo-host.s3.amazonaws.com/myshellttsbase/examples/es/ES/speed_1.0/sent_000.wav) |
-| French                | [Link](https://myshell-public-repo-host.s3.amazonaws.com/myshellttsbase/examples/fr/FR/speed_1.0/sent_000.wav) |
-| Chinese (mix EN)      | [Link](https://myshell-public-repo-host.s3.amazonaws.com/myshellttsbase/examples/zh/ZH/speed_1.0/sent_008.wav) |
-| Japanese              | [Link](https://myshell-public-repo-host.s3.amazonaws.com/myshellttsbase/examples/jp/JP/speed_1.0/sent_000.wav) |
-| Korean                | [Link](https://myshell-public-repo-host.s3.amazonaws.com/myshellttsbase/examples/kr/KR/speed_1.0/sent_000.wav) |
+## Technical Features
+- Uses [underthesea](https://github.com/undertheseanlp/underthesea) for Vietnamese text segmentation
+- Integrates [PhoBert](https://github.com/VinAIResearch/PhoBERT) (vinai/phobert-base-v2) to extract Vietnamese language features
+- Fully supports Vietnamese language characteristics:
+  - 45 symbols (phonemes)
+  - 8 tones (7 tonal marks and 1 unmarked tone)
+  - All defined in `melo/text/symbols.py`
+- Text-to-phoneme conversion source:
+  - Based on [Text2PhonemeSequence](https://github.com/thelinhbkhn2014/Text2PhonemeSequence) library
+  - An improved version with higher performance has been developed at [Text2PhonemeFast](https://github.com/manhcuong02/Text2PhonemeFast)
 
-Some other features include:
-- The Chinese speaker supports `mixed Chinese and English`.
-- Fast enough for `CPU real-time inference`.
+## Fine-tuning from Base Model
+This model was fine-tuned from the base MeloTTS model by:
+- Replacing phonemes not found in English and Vietnamese with Vietnamese phonemes
+- Specifically replacing Korean phonemes with corresponding Vietnamese phonemes
+- Adjusting parameters to match Vietnamese phonetic characteristics
 
-## Usage
-- [Use without Installation](docs/quick_use.md)
-- [Install and Use Locally](docs/install.md)
-- [Training on Custom Dataset](docs/training.md)
+## Training Data
+- The model was trained on the Infore dataset, consisting of approximately 25 hours of speech
+- Note on data quality: This dataset has several limitations including poor voice quality, lack of punctuation, and inaccurate phonetic transcriptions. However, when trained on internal data, the results were much better.
 
-The Python API and model cards can be found in [this repo](https://github.com/myshell-ai/MeloTTS/blob/main/docs/install.md#python-api) or on [HuggingFace](https://huggingface.co/myshell-ai).
+## Downloading the Model
+The pre-trained model can be downloaded from Hugging Face:
+- [MeloTTS Vietnamese on Hugging Face](https://huggingface.co/nmcuong/MeloTTS_Vietnamese)
 
-**Contributing**
+## Usage Guide
 
-If you find this work useful, please consider contributing to this repo.
+### Data Preparation
+The data preparation process is detailed in `docs/training.md`. Basically, you need:
+- Audio files (recommended to use 44100Hz format)
+- Metadata file with the format:
+  ```
+  path/to/audio_001.wav |<speaker_name>|<language_code>|<text_001>
+  path/to/audio_002.wav |<speaker_name>|<language_code>|<text_002>
+  ```
 
-- Many thanks to [@fakerybakery](https://github.com/fakerybakery) for adding the Web UI and CLI part.
-
-## Authors
-
-- [Wenliang Zhao](https://wl-zhao.github.io) at Tsinghua University
-- [Xumin Yu](https://yuxumin.github.io) at Tsinghua University
-- [Zengyi Qin](https://www.qinzy.tech) (project lead) at MIT and MyShell
-
-**Citation**
+### Data Preprocessing
+To process data, use the command:
+```bash
+python melo/preprocess_text.py --metadata /path/to/text_training.list --config_path /path/to/config.json --device cuda:0 --val-per-spk 10 --max-val-total 500
 ```
-@software{zhao2024melo,
-  author={Zhao, Wenliang and Yu, Xumin and Qin, Zengyi},
-  title = {MeloTTS: High-quality Multi-lingual Multi-accent Text-to-Speech},
-  url = {https://github.com/myshell-ai/MeloTTS},
-  year = {2023}
-}
+or use the script `melo/preprocess_text.sh` with appropriate parameters.
+
+### Using the Model
+Refer to the notebook `test_infer.ipynb` to learn how to use the model:
+```python
+# colab_infer.py
+from melo.api import TTS
+
+# Speed is adjustable
+speed = 1.0
+
+# CPU is sufficient for real-time inference.
+# You can set it manually to 'cpu' or 'cuda' or 'cuda:0' or 'mps'
+device = "cuda:0"  # Will automatically use GPU if available
+
+# English
+model = TTS(
+    language="VI",
+    device=device,
+    config_path="/path/to/config.json",
+    ckpt_path="/path/to/G_model.pth",
+)
+speaker_ids = model.hps.data.spk2id
+
+# Convert text to speech
+text = "Nhập văn bản tại đây"
+speaker_ids = model.hps.data.spk2id
+output_path = "output.wav"
+model.tts_to_file(text, speaker_ids["speaker_name"], output_path, speed=1.0, quiet=True)
 ```
+
+## Audio Examples
+Listen to sample outputs from the model:
+
+### Sample Audio
+<audio controls>
+  <source src="samples/sample.wav" type="audio/wav">
+  Your browser does not support the audio element.
+</audio>
 
 ## License
-
-This library is under MIT License, which means it is free for both commercial and non-commercial use.
+This project follows the MIT License, like the original MeloTTS project, allowing use for both commercial and non-commercial purposes.
 
 ## Acknowledgements
 

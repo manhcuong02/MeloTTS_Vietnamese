@@ -8,13 +8,15 @@ cwd = os.path.dirname(os.path.abspath(__file__))
 
 with open('requirements.txt') as f:
     reqs = f.read().splitlines()
+    
+# unidic for Japanese support
 # class PostInstallCommand(install):
 #     """Post-installation for installation mode."""
 #     def run(self):
 #         install.run(self)
 #         os.system('python -m unidic download')
 
-
+# unidic for Japanese support
 # class PostDevelopCommand(develop):
 #     """Post-installation for development mode."""
 #     def run(self):
